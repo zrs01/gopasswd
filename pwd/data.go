@@ -3,6 +3,8 @@ package pwd
 import (
 	"encoding/json"
 	"os"
+
+	"github.com/rotisserie/eris"
 )
 
 type HostUser struct {
@@ -85,4 +87,18 @@ func (s *HostStatus) SaveState(state *HostLogin) error {
 		s.Data.Hosts = append(s.Data.Hosts, *state)
 	}
 	return s.save()
+}
+
+func (s *HostStatus) IsHostExist(host string) error {
+	exist := false
+	for _, hostLogin := range s.Data.Hosts {
+		if hostLogin.Host == host {
+			exist = true
+			break
+		}
+	}
+	if !exist {
+		return eris.Errorf("failed to find the host %s", host)
+	}
+	return nil
 }

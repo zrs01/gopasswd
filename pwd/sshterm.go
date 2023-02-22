@@ -110,13 +110,17 @@ func (s *SSHTerm) ChangePassword(newPassword string) (string, error) {
 	}
 
 	// CentOS
+	// version 7: (current) UNIX password
+	// version 8: Current password
 	prompt := s.User + "@.*\\$"
-	content := s.readBuff([]string{prompt, "\\(current\\) UNIX password:"}, sshOut, s.Timeout)
+	// content := s.readBuff([]string{prompt, "\\(current\\) UNIX password:", "Current password:"}, sshOut, s.Timeout)
+	content := s.readBuff([]string{prompt, "\\(?[Cc]urrent\\)? (UNIX )?password:"}, sshOut, s.Timeout)
 	if s.isMatch(s.getLastLine(content), prompt+".*$") {
 		if _, err := s.writeBuff("passwd", sshIn); err != nil {
 			return "", eris.Wrap(err, "failed to send 'passwd' to the shell")
 		}
-		if err := step([]string{prompt, "\\(current\\) UNIX password:"}, s.Password); err != nil {
+		if err := step([]string{prompt, "\\(?[Cc]urrent\\)? (UNIX )?password:"}, s.Password); err != nil {
+			// if err := step([]string{prompt, "\\(current\\) UNIX password:", "Current password:"}, s.Password); err != nil {
 			return "", eris.Wrap(err, "failed to get the message '\\(current\\) UNIX password:' from the shell")
 		}
 	} else {

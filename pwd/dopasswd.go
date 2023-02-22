@@ -13,9 +13,17 @@ import (
 type PwsdOption struct {
 	Password string
 	Encrypt  bool
+	Host     string // spcific host to be changed
 }
 
 func PerformPasswdAction(opt PwsdOption) error {
+	hostStatus := LoadHostStatus()
+	if opt.Host != "" {
+		if err := hostStatus.IsHostExist(opt.Host); err != nil {
+			return eris.Wrap(err, "failed to check host existence")
+		}
+	}
+
 	for {
 		fmt.Print("Enter New Password: ")
 		bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
@@ -46,31 +54,39 @@ func PerformPasswdAction(opt PwsdOption) error {
 	fmt.Println("")
 
 	// change password to all users in all hosts
-	pStatus := LoadHostStatus()
-	for i := 0; i < len(pStatus.Data.Hosts); i++ {
-		pState := &pStatus.Data.Hosts[i]
+	for i := 0; i < len(hostStatus.Data.Hosts); i++ {
+		hostLogin := &hostStatus.Data.Hosts[i]
 
-		for j := 0; j < len(pState.Users); j++ {
-			user := pState.Users[j]
-			// decrypt password
-			if strings.HasPrefix(user.Password, "enc:") {
-				user.Password = simpleDecrypt(user.Password[4:len(user.Password)])
-			}
-			// update password
-			msg, err := passwdHost(pState.Host, pState.Port, user.UserId, user.Password, opt.Password)
-			if err != nil {
-				return fmt.Errorf("error: [%s]:%s %s", pState.Host, user.UserId, err.Error())
-			}
-			fmt.Printf("[%s]:%s %s\n", pState.Host, user.UserId, msg)
-
-			user.Password = opt.Password
-			if opt.Encrypt {
-				user.Password = "enc:" + simpleEncrypt(user.Password)
-			}
-			pState.Users[j] = user
+		allowChangePassword := false
+		if opt.Host == "" {
+			allowChangePassword = true
+		} else if opt.Host != "" && opt.Host == hostLogin.Host {
+			allowChangePassword = true
 		}
-		pState.Update = time.Now().Format("2006-01-02 15:04:05")
-		pStatus.SaveState(pState)
+
+		if allowChangePassword {
+			for j := 0; j < len(hostLogin.Users); j++ {
+				user := hostLogin.Users[j]
+				// decrypt password
+				if strings.HasPrefix(user.Password, "enc:") {
+					user.Password = simpleDecrypt(user.Password[4:len(user.Password)])
+				}
+				// update password
+				msg, err := passwdHost(hostLogin.Host, hostLogin.Port, user.UserId, user.Password, opt.Password)
+				if err != nil {
+					return eris.Errorf("error: [%s]:%s %s", hostLogin.Host, user.UserId, err.Error())
+				}
+				fmt.Printf("[%s]:%s %s\n", hostLogin.Host, user.UserId, msg)
+				user.Password = opt.Password
+				// encrypt password
+				if opt.Encrypt {
+					user.Password = "enc:" + simpleEncrypt(user.Password)
+				}
+				hostLogin.Users[j] = user
+			}
+			hostLogin.Update = time.Now().Format("2006-01-02 15:04:05")
+			hostStatus.SaveState(hostLogin)
+		}
 	}
 	return nil
 }
