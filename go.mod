@@ -1,6 +1,6 @@
 module github.com/zrs01/gopasswd
 
-go 1.19
+go 1.18
 
 require (
 	github.com/rotisserie/eris v0.5.4

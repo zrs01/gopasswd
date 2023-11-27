@@ -22,7 +22,7 @@ $(WINDOWS):
 	env GOOS=windows GOARCH=amd64 go build -v -o build/$(WINDOWS) -trimpath -ldflags="-s -w -X main.version=$(VERSION)"
 
 $(LINUX):
-	env GOOS=linux GOARCH=amd64 go build -v -o build/$(LINUX) -trimpath -ldflags="-s -w -X main.version=$(VERSION)"
+	env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -o build/$(LINUX) -trimpath -ldflags="-s -w -X main.version=$(VERSION)"
 
 $(DARWIN):
 	env GOOS=darwin GOARCH=amd64 go build -v -o build/$(DARWIN) -trimpath -ldflags="-s -w -X main.version=$(VERSION)"
@@ -34,6 +34,13 @@ build: windows linux darwin ## Build binaries
 
 # test: ## Run unit tests
 # 	./scripts/test_unit.sh
+
+docker-linux:
+	docker run --rm -v "$(PWD)":/usr/src/myapp -w /usr/src/myapp golang:1.18-buster \
+	git config --global --add safe.directory /usr/src/myapp && make linux
+
+deploy:
+	scp build/gopasswd_linux_amd64 hacdc1mgtadm01:passwd/gopasswd
 
 clean: ## Remove previous build
 	rm -f build/$(WINDOWS) build/$(LINUX) build/$(DARWIN)

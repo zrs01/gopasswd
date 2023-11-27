@@ -71,12 +71,17 @@ func PerformPasswdAction(opt PwsdOption) error {
 				if strings.HasPrefix(user.Password, "enc:") {
 					user.Password = simpleDecrypt(user.Password[4:len(user.Password)])
 				}
-				// update password
-				msg, err := passwdHost(hostLogin.Host, hostLogin.Port, user.UserId, user.Password, opt.Password)
-				if err != nil {
-					return eris.Errorf("error: [%s]:%s %s", hostLogin.Host, user.UserId, err.Error())
+				// ignore if old password is same as new password
+				if user.Password == opt.Password {
+					fmt.Printf("[%s]:%s ignore update since same password encountered\n", hostLogin.Host, user.UserId)
+				} else {
+					// update password
+					msg, err := passwdHost(hostLogin.Host, hostLogin.Port, user.UserId, user.Password, opt.Password)
+					if err != nil {
+						return eris.Errorf("error: [%s]:%s %s", hostLogin.Host, user.UserId, err.Error())
+					}
+					fmt.Printf("[%s]:%s %s\n", hostLogin.Host, user.UserId, msg)
 				}
-				fmt.Printf("[%s]:%s %s\n", hostLogin.Host, user.UserId, msg)
 				user.Password = opt.Password
 				// encrypt password
 				if opt.Encrypt {
